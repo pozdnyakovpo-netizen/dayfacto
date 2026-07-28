@@ -1,0 +1,14 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+# Каждый сервис переопределяет command в docker-compose.yml —
+# этот образ общий, чтобы не дублировать Dockerfile на каждый сервис
+# на этапе MVP. Разделение на отдельные образы имеет смысл начиная
+# с Phase 2, когда сервисы обрастут разными зависимостями.
+CMD ["python", "-m", "services.ingestion.main"]
