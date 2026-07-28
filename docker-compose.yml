@@ -49,8 +49,18 @@ services:
       - migrate
     restart: unless-stopped
 
+  dedup:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.base
+    command: python -m services.dedup.main
+    env_file: .env
+    depends_on:
+      - postgres
+      - migrate
+    restart: unless-stopped
+
   # Phase 1 продолжение (следующие итерации, скелет уже в project structure):
-  # dedup:
   # clustering:
   # ranking:
   # editorial:
