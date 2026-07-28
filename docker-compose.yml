@@ -60,8 +60,18 @@ services:
       - migrate
     restart: unless-stopped
 
+  clustering:
+    build:
+      context: .
+      dockerfile: infra/docker/Dockerfile.base
+    command: python -m services.clustering.main
+    env_file: .env
+    depends_on:
+      - postgres
+      - migrate
+    restart: unless-stopped
+
   # Phase 1 продолжение (следующие итерации, скелет уже в project structure):
-  # clustering:
   # ranking:
   # editorial:
   # decision:
