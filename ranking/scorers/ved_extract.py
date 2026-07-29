@@ -166,6 +166,8 @@ def is_publishable(c: dict) -> tuple:
     ])
     if not has_target:
         return False, "не определён адресат"
+    if c.get("stage") == "draft":
+        return False, "стадия проекта, ещё не принято"
     if c.get("date_status") == "none" and c.get("change_type") != "court_practice":
         return False, "нет срока"
     old = c.get("value_old") or ""
@@ -210,6 +212,11 @@ def extract(router, title: str, body: str = "") -> dict:
     task += "change_type, what, tnved_codes, countries, direction, goods, "
     task += "value_old, value_new, effective_date, date_status, date_raw, "
     task += "impact, impact_note, doc_number, stage. "
+    task += "В doc_number укажи ПОЛНОЕ название документа как в тексте: "
+    task += "вид, орган, дата и номер. Не сокращай до одного номера. "
+    task += "Если органа в тексте нет - оставь пустым, не додумывай. "
+    task += "Пустой doc_number НЕ мешает заполнить остальные поля: "
+    task += "change_type и impact определяй по сути изменения. "
     task += "Поля tnved_codes и countries - списки строк, остальные строки. "
     task += "Не создавай других ключей и не оборачивай ответ в список.\n\n"
     task += "МАТЕРИАЛ:\n"
