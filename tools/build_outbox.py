@@ -25,6 +25,7 @@ from sqlalchemy import text                              # noqa: E402
 from db.models import RawItemModel, SourceModel          # noqa: E402
 from db.session import get_session                       # noqa: E402
 from llm_provider import build_default_router            # noqa: E402
+from tools.topical import topical_skip
 from ranking.scorers.ved_extract import extract          # noqa: E402
 from services.editorial.ved_generator import generate    # noqa: E402
 
@@ -137,13 +138,16 @@ def main() -> int:
     items = (
         session.query(RawItemModel)
         .join(SourceModel)
-        .filter(SourceModel.name.like('Альта%'))
+        .filter(SourceModel.name.in_(['Гарант','КонсультантПлюс','Право.ру']) |
+                SourceModel.name.like('Альта%') |
+                SourceModel.name.like('SeaNews%') |
+                SourceModel.name.like('LogiRus%'))
         .order_by(SourceModel.weight.desc(),
                   RawItemModel.published_at.desc())
         .limit(a.limit)
         .all()
     )
-    rows = [(i.id, i.title, i.body or "", i.url or "") for i in items]
+    rows = [(i.id, i.title, i.body or "", i.url or "", i.source.name) for i in items]
 
     if not rows:
         print("материалов нет")
@@ -170,10 +174,10 @@ def main() -> int:
     router = build_default_router()
     ready, skipped, cached, llm_calls = [], 0, 0, 0
 
-    for item_id, title, body, url in rows:
+    for item_id, title, body, url, src_name in rows:
         if len(ready) >= a.max_posts:
             break
-        reason = prefilter(title)
+        reason = topical_skip(src_name, title, body) or prefilter(title)
         if reason:
             skipped += 1
             print("- %s (%s)" % (title[:46], reason))

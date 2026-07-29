@@ -28,7 +28,10 @@ def _raw_hash(source_id, url: str | None, title: str) -> str:
 
 @retry_with_backoff(max_attempts=3, exceptions=(Exception,))
 def _fetch_feed(url: str):
-    parsed = feedparser.parse(url)
+    parsed = feedparser.parse(url, agent=(
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/126.0 Safari/537.36"))
     if parsed.bozo and not parsed.entries:
         # bozo=True значит "фид не совсем валиден", но entries иногда
         # всё равно парсятся — падаем только если entries пустой.
