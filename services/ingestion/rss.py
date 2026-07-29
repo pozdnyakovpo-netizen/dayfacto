@@ -6,6 +6,8 @@ raw_items с дедупом на уровне БД (unique constraint на raw_h
 """
 
 import hashlib
+import html
+import re
 from datetime import datetime, timezone
 
 import feedparser
@@ -49,6 +51,10 @@ def fetch_rss_source(source: SourceModel, limit: int = 30) -> int:
             title = getattr(entry, "title", "").strip()
             link = getattr(entry, "link", None)
             summary = getattr(entry, "summary", "") or getattr(entry, "description", "")
+            _full = getattr(entry, "text", "") or ""
+            if len(_full) > len(summary):
+                summary = _full
+            summary = ' '.join(re.sub('<[^>]+>', ' ', html.unescape(summary or '')).split())
             if not title:
                 continue
 

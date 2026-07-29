@@ -1,0 +1,12 @@
+weights:
+  relevance: 0.45
+  novelty: 0.30
+  dup_risk_inverted: 0.25
+
+thresholds:
+  auto_publish: 0.78
+  hold_below: 0.60
+
+gates:
+  dup_risk_block: 0.85
+  blocklist_enabled: true

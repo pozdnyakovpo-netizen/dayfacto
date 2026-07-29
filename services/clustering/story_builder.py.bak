@@ -14,8 +14,6 @@
 """
 
 import re
-
-from sqlalchemy import func
 from datetime import datetime, timedelta, timezone
 
 from db.models import RawItemModel, StoryItemModel, StoryModel
@@ -24,17 +22,8 @@ from shared.logging import get_logger
 
 logger = get_logger(__name__)
 
-# Окно сужено с 48ч: за двое суток к «сюжету про Трампа» цеплялись
-# события разных дней. Для новостной ленты 12ч достаточно — дольше
-# живут только по-настоящему длинные истории, а их лучше связывать
-# отдельным механизмом related_story_id, а не склейкой в один сюжет.
-CLUSTER_LOOKBACK_HOURS = 12
-# Было 0.15 — это одно совпавшее слово из семи. Вторая ветка
-# is_same_event задумана как «общая сущность ПЛЮС независимое
-# подтверждение», но при таком пороге подтверждением служило любое
-# случайное совпадение. Отсюда похороны Грэма в одном сюжете со
-# встречей Нетаньяху.
-WORD_OVERLAP_THRESHOLD = 0.45
+CLUSTER_LOOKBACK_HOURS = 48
+WORD_OVERLAP_THRESHOLD = 0.15
 
 STOPWORDS = {
     "и", "в", "на", "с", "со", "по", "за", "для", "от", "к", "из", "у", "о", "об",
@@ -50,9 +39,6 @@ STOPWORDS = {
 COMMON_ENTITY_STOPWORDS = {
     "росси", "москв", "украи", "путин", "кремл", "центр", "запад", "восток", "север",
 }
-
-
-MAX_STORY_SIZE = 6  # одно событие редко приходит более чем из 6 источников
 
 
 def significant_words(text: str) -> set[str]:
@@ -88,19 +74,16 @@ def extract_entity_stems(text: str) -> set[str]:
 def titles_are_similar(words_a: set[str], words_b: set[str], threshold: float = 0.5) -> bool:
     if not words_a or not words_b:
         return False
-    # Считаем от ОБЪЕДИНЕНИЯ, а не от меньшего множества. Деление на
-    # меньшее завышало сходство: у короткого заголовка 5-6 значимых слов,
-    # и три совпадения давали 0.5 даже с текстом втрое длиннее.
-    union = len(words_a | words_b)
-    if union == 0:
+    smaller = min(len(words_a), len(words_b))
+    if smaller == 0:
         return False
-    return (len(words_a & words_b) / union) >= threshold
+    return (len(words_a & words_b) / smaller) >= threshold
 
 
 def is_same_event(text_a: str, text_b: str) -> bool:
     words_a = significant_words(text_a)
     words_b = significant_words(text_b)
-    if titles_are_similar(words_a, words_b, threshold=0.42):
+    if titles_are_similar(words_a, words_b, threshold=0.5):
         return True
     entities_a = extract_entity_stems(text_a)
     entities_b = extract_entity_stems(text_b)
@@ -147,23 +130,15 @@ def run_clustering_pass(lookback_hours: int = CLUSTER_LOOKBACK_HOURS) -> dict:
 
         # Предзагружаем объединённый текст (все заголовки постов) для
         # каждого открытого сюжета — используется для сравнения.
-        # Сравниваем ТОЛЬКО с каноническим заголовком сюжета.
-        # Раньше здесь склеивались все заголовки сюжета в одну строку, и
-        # сравнение шло с ней. Так как titles_are_similar делит пересечение
-        # на размер меньшего множества (а меньшее — всегда новый заголовок),
-        # растущий ком ловил всё легче: сюжет из 10 новостей содержит ~100
-        # разных слов, и почти любая новость находила в нём 50% совпадений.
-        # Дефект самоусиливался — отсюда «сюжет» из 42 материалов про Трампа.
-        story_texts: dict = {s.id: s.canonical_title for s in open_stories}
-
-        # Размер сюжета: ограничитель на случай, если склейка всё же пойдёт.
-        story_sizes: dict = {}
-        for sid, cnt in (
-            session.query(StoryItemModel.story_id, func.count(StoryItemModel.raw_item_id))
-            .group_by(StoryItemModel.story_id)
-            .all()
-        ):
-            story_sizes[sid] = cnt
+        story_texts: dict = {}
+        for story in open_stories:
+            titles = (
+                session.query(RawItemModel.title)
+                .join(StoryItemModel, StoryItemModel.raw_item_id == RawItemModel.id)
+                .filter(StoryItemModel.story_id == story.id)
+                .all()
+            )
+            story_texts[story.id] = " ".join(t[0] for t in titles) or story.canonical_title
 
         candidates = (
             session.query(RawItemModel)
@@ -173,26 +148,16 @@ def run_clustering_pass(lookback_hours: int = CLUSTER_LOOKBACK_HOURS) -> dict:
         )
 
         for item in candidates:
-            # Берём ЛУЧШЕЕ совпадение, а не первое. Раньше крупные сюжеты
-            # стояли в начале списка и перехватывали новости у более
-            # подходящих.
-            matched_story, best = None, 0.0
-            item_words = significant_words(item.title)
+            matched_story = None
             for story in open_stories:
-                if story_sizes.get(story.id, 0) >= MAX_STORY_SIZE:
-                    continue
-                if not is_same_event(item.title, story_texts[story.id]):
-                    continue
-                cand_words = significant_words(story_texts[story.id])
-                union = len(item_words | cand_words)
-                score = len(item_words & cand_words) / union if union else 0.0
-                if score > best:
-                    matched_story, best = story, score
+                if is_same_event(item.title, story_texts[story.id]):
+                    matched_story = story
+                    break
 
             if matched_story:
                 session.add(StoryItemModel(story_id=matched_story.id, raw_item_id=item.id, similarity_score=0.8))
                 matched_story.last_updated_at = datetime.now(timezone.utc)
-                story_sizes[matched_story.id] = story_sizes.get(matched_story.id, 0) + 1
+                story_texts[matched_story.id] += " " + item.title
                 item.status = "clustered"
                 stats["attached_to_existing"] += 1
             else:
@@ -208,7 +173,6 @@ def run_clustering_pass(lookback_hours: int = CLUSTER_LOOKBACK_HOURS) -> dict:
                 item.status = "clustered"
                 open_stories.append(new_story)
                 story_texts[new_story.id] = item.title
-                story_sizes[new_story.id] = 1
                 stats["new_stories"] += 1
 
             session.commit()
