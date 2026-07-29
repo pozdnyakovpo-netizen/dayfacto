@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import logging
 import os
+
+_PROXY = os.environ.get('TELEGRAM_PROXY', '')
+_PROXIES = {'http': _PROXY, 'https': _PROXY} if _PROXY else None
 import time
 
 import requests
@@ -26,7 +29,7 @@ class TelegramClient:
         url = API.format(token=self.token, method=method)
         for attempt in range(1, 4):
             try:
-                r = self.s.post(url, json=params, timeout=self.timeout)
+                r = self.s.post(url, json=params, timeout=self.timeout, proxies=_PROXIES)
             except requests.RequestException as exc:
                 if attempt == 3:
                     raise TelegramError(f"сеть: {exc}") from exc

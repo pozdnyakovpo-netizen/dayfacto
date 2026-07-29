@@ -38,6 +38,10 @@ services:
       - postgres
 
   ingestion:
+    environment:
+      HTTP_PROXY: http://109.73.195.192:8888
+      HTTPS_PROXY: http://109.73.195.192:8888
+      NO_PROXY: postgres,redis,localhost,127.0.0.1,api.anthropic.com,.anthropic.com
     build:
       context: .
       dockerfile: infra/docker/Dockerfile.base

@@ -141,7 +141,8 @@ def main() -> int:
         .filter(SourceModel.name.in_(['Гарант','КонсультантПлюс','Право.ру']) |
                 SourceModel.name.like('Альта%') |
                 SourceModel.name.like('SeaNews%') |
-                SourceModel.name.like('LogiRus%'))
+                SourceModel.name.like('LogiRus%') |
+                SourceModel.name.like('ФТС%'))
         .order_by(SourceModel.weight.desc(),
                   RawItemModel.published_at.desc())
         .limit(a.limit)

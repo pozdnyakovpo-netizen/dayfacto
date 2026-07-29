@@ -17,6 +17,7 @@ from db.models import RawItemModel, SourceModel
 from db.session import get_session
 from shared.logging import get_logger
 from shared.retry import retry_with_backoff
+from services.ingestion.fulltext import fetch as fetch_fulltext
 
 logger = get_logger(__name__)
 
@@ -65,6 +66,15 @@ def fetch_rss_source(source: SourceModel, limit: int = 30) -> int:
             if getattr(entry, "published_parsed", None):
                 published_at = datetime(*entry.published_parsed[:6], tzinfo=timezone.utc)
 
+            _h = _raw_hash(source.id, link, title)
+            if session.query(RawItemModel.id).filter_by(raw_hash=_h).first():
+                continue
+
+            if getattr(source, "fetch_fulltext", False) and link:
+                _ft = fetch_fulltext(link)
+                if _ft and len(_ft) > len(summary):
+                    summary = _ft
+
             item = RawItemModel(
                 source_id=source.id,
                 source_type="rss",
@@ -73,7 +83,7 @@ def fetch_rss_source(source: SourceModel, limit: int = 30) -> int:
                 body=summary[:8000],
                 published_at=published_at,
                 fetched_at=datetime.now(timezone.utc),
-                raw_hash=_raw_hash(source.id, link, title),
+                raw_hash=_h,
                 status="new",
             )
             session.add(item)
