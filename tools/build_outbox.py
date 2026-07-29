@@ -28,6 +28,7 @@ OUT = pathlib.Path(os.environ.get("OUTBOX_PATH", "/app/outbox/pending.json"))
 
 
 def main() -> int:
+
     ap = argparse.ArgumentParser()
     ap.add_argument("--limit", type=int, default=20,
                     help="сколько материалов просмотреть")

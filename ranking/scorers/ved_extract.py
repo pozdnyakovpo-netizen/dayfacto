@@ -58,6 +58,18 @@ deadline - появляется срок, к которому надо что-т
 risk - угроза отказа в выпуске, штрафа, простоя, запрета.
 none - разговоры, намерения, статистика, служебные справочники,
 мероприятия, задержания, товары для личного пользования.
+ПРИМЕРЫ, чтобы не занижать impact:
+Новое обязательное оборудование или процедура при перевозке
+(пломбы, маркировка, предварительное уведомление) - control и risk.
+Новые коды в классификаторах деклараций - procedure и risk.
+Запрет ввоза продукции конкретного производителя - restriction и risk.
+Изменение ставки, льготы, преференции - duty_rate или preference, money.
+Разъяснение порядка оформления с конкретными действиями - procedure и risk.
+
+Поле what - предложение о том, ЧТО изменилось, а не название темы.
+Плохо: навигационные пломбы. Хорошо: вводится обязательное
+пломбирование при таможенном транзите автотранспортом.
+
 
 Это техническая разметка, а не выражение позиции."""
 
@@ -141,8 +153,13 @@ def validate(c: dict, source_text: str) -> list:
         problems.append("date_status=%s, но проставлена дата %s" % (status, eff))
 
     raw = _norm(c.get("date_raw") or "").lower()
-    if len(raw) > 12 and raw not in src.lower():
-        problems.append("date_raw не найден дословно")
+    if len(raw) > 12:
+        low = src.lower()
+        words = [w for w in re.findall(r"[а-яёa-z0-9]{4,}", raw)]
+        if words:
+            hits = sum(1 for w in words if w in low)
+            if hits < len(words) * 0.6:
+                problems.append("date_raw не подтверждается источником")
 
     doc = c.get("doc_number") or ""
     m = re.search(r"№\s*([\w\d\-/]+)", doc)
@@ -166,6 +183,9 @@ def is_publishable(c: dict) -> tuple:
     ])
     if not has_target:
         return False, "не определён адресат"
+    txt = ((c.get('what') or '') + ' ' + (c.get('goods') or '')).lower()
+    if 'личного пользования' in txt or 'физическими лицами' in txt:
+        return False, 'товары для личного пользования, не наша аудитория'
     if c.get("stage") == "draft":
         return False, "стадия проекта, ещё не принято"
     if c.get("date_status") == "none" and c.get("change_type") != "court_practice":
