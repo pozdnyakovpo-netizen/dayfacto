@@ -209,7 +209,7 @@ def _ask(provider, text: str) -> dict:
             continue
         v = d.get(k, out[k])
         if isinstance(out[k], list):
-            out[k] = [str(x)[:40] for x in (v or [])][:20]
+            out[k] = [str(x)[:40] for x in (v or []) if str(x).strip()][:20]
         else:
             out[k] = str(v or "")[:400]
     out["degraded"] = False
@@ -232,6 +232,9 @@ def extract(router, title: str, body: str = "") -> dict:
     task += "change_type, what, tnved_codes, countries, direction, goods, "
     task += "value_old, value_new, effective_date, date_status, date_raw, "
     task += "impact, impact_note, doc_number, stage. "
+    task += "Если срок указан только месяцем без числа (АВГУСТ 2026), "
+    task += "ставь date_status=month и effective_date пустым. "
+
     task += "В doc_number укажи ПОЛНОЕ название документа как в тексте: "
     task += "вид, орган, дата и номер. Не сокращай до одного номера. "
     task += "Если органа в тексте нет - оставь пустым, не додумывай. "
@@ -287,7 +290,7 @@ ALLOWED_IMPACT = {"money", "deadline", "risk", "none"}
 ALLOWED_TYPE = {"duty_rate", "tnved_code", "preference", "procedure",
                 "restriction", "control", "currency_control",
                 "court_practice", "rate_info"}
-ALLOWED_DATE = {"exact", "relative", "conditional", "none"}
+ALLOWED_DATE = {"exact", "relative", "conditional", "month", "none"}
 
 
 def sanitize(c):
