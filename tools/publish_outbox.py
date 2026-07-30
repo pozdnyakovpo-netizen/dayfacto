@@ -11,10 +11,13 @@
 
 import json
 import os
+import sys
 import pathlib
 import time
 import urllib.parse
 import urllib.request
+
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 PENDING = pathlib.Path("outbox/pending.json")
 SENT = pathlib.Path("outbox/sent.json")
@@ -49,7 +52,10 @@ def _send_img(token, chat, text, img):
     try:
         with urllib.request.urlopen(req, timeout=60) as r:
             d = json.loads(r.read().decode())
-        return d["result"]["message_id"] if d.get("ok") else None
+        if not d.get("ok"):
+            print("  (Telegram отказал: %s)" % str(d)[:200])
+            return None
+        return d["result"]["message_id"]
     except Exception as exc:
         print("  (sendPhoto не прошёл: %s)" % str(exc)[:80])
         return None
@@ -188,7 +194,9 @@ def main() -> int:
             print("пропуск, документ уже освещался: %s" % _dup[:60])
             continue
         try:
-            mid = send(token, chat, post["text"])
+            mid = send_photo(token, chat, post["text"], post)
+            if not mid:
+                mid = send(token, chat, post["text"])
         except Exception as exc:
             print("ОШИБКА: %s -> %s" % (post.get("title", "")[:50], exc))
             failed.append(post)
