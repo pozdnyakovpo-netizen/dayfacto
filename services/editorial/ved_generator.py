@@ -87,16 +87,8 @@ class VedDraft:
         return not self.problems and bool(self.headline)
 
     def render(self) -> str:
-        parts = [self.headline, ""]
-        if self.what_changes:
-            parts += [self.what_changes, ""]
-        if self.who:
-            parts += ["Кого касается: " + self.who, ""]
-        if self.what_to_do:
-            parts += ["Что делать: " + self.what_to_do, ""]
-        if self.source_line:
-            parts.append(self.source_line)
-        return "\n".join(parts).strip()
+        from services.editorial.style import build_post
+        return build_post(self)
 
 
 def _facts_block(c: dict) -> str:

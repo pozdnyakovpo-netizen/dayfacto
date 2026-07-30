@@ -21,10 +21,60 @@ SENT = pathlib.Path("outbox/sent.json")
 API = "https://api.telegram.org/bot%s/%s"
 
 
+MONTHS = ("января", "февраля", "марта", "апреля", "мая", "июня", "июля",
+          "августа", "сентября", "октября", "ноября", "декабря")
+
+
+def _ru(iso):
+    try:
+        y, m, d = iso.split("-")
+        return "Вступает в силу %d %s %s" % (int(d), MONTHS[int(m) - 1], y)
+    except Exception:
+        return ""
+
+
+def send_photo(token, chat, text, post):
+    """Пост с обложкой. Возвращает message_id или None."""
+    import re, uuid, urllib.request
+    if len(text) > 1000:
+        return None
+    try:
+        from services.editorial.cover import make
+        head = re.sub(r"<[^>]+>", "", (post.get("title") or "")).strip()
+        img = make(head[:160],
+                   change_type=post.get("change_type", ""),
+                   effective_date=_ru(post.get("effective_date") or ""),
+                   note=(post.get("doc_number") or "")[:110],
+                   urgent=str(post.get("item_id", "")).endswith(("-d1", "-d7")),
+                   out="/app/outbox/_cover.png")
+    except Exception as exc:
+        print("  (обложка не собрана: %s)" % str(exc)[:80])
+        return None
+    b = uuid.uuid4().hex
+    parts = []
+    for k, v in (("chat_id", chat), ("caption", text), ("parse_mode", "HTML")):
+        parts.append(("--%s\r\nContent-Disposition: form-data; name=\"%s\"\r\n\r\n%s\r\n"
+                      % (b, k, v)).encode())
+    parts.append(("--%s\r\nContent-Disposition: form-data; name=\"photo\"; "
+                  "filename=\"c.png\"\r\nContent-Type: image/png\r\n\r\n" % b).encode())
+    parts.append(open(img, "rb").read())
+    parts.append(("\r\n--%s--\r\n" % b).encode())
+    req = urllib.request.Request(API % (token, "sendPhoto"), data=b"".join(parts))
+    req.add_header("Content-Type", "multipart/form-data; boundary=%s" % b)
+    try:
+        with urllib.request.urlopen(req, timeout=60) as r:
+            d = json.loads(r.read().decode())
+        return d["result"]["message_id"] if d.get("ok") else None
+    except Exception as exc:
+        print("  (sendPhoto не прошёл: %s)" % str(exc)[:80])
+        return None
+
+
 def send(token: str, chat: str, text: str) -> int:
     data = urllib.parse.urlencode({
         "chat_id": chat,
         "text": text,
+        "parse_mode": "HTML",
         "disable_web_page_preview": "true",
     }).encode()
     url = API % (token, "sendMessage")

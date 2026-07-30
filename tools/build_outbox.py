@@ -243,6 +243,7 @@ def main() -> int:
             "item_id": str(item_id),
             "title": title[:200],
             "text": draft.render(),
+            "change_type": change.get("change_type", ""),
             "doc_number": change.get("doc_number", ""),
             "effective_date": change.get("effective_date", ""),
         })
