@@ -37,6 +37,28 @@ def _fetch_page(username: str) -> str:
     return resp.text
 
 
+CAL_RE = re.compile(r"(\d{2})\.(\d{2})\.(\d{4})\s+вступают?\s+в\s+силу")
+
+
+def split_calendar(title, body):
+    """Календарь Альты -> список (заголовок, текст) по одному изменению."""
+    m = CAL_RE.search(title + " " + body[:120])
+    if not m or "\u2705" not in body:
+        return None
+    day, mon, year = m.groups()
+    tail = body.split("\u2705", 1)[1]
+    tail = re.split(r"\U0001F4C5|Весь таможенный календарь", tail)[0]
+    out = []
+    for chunk in ("\u2705" + tail).split("\u2705"):
+        c = re.sub(r"\s+", " ", chunk).strip(" .")
+        if len(c) < 30:
+            continue
+        head = c[:110].rsplit(" ", 1)[0] if len(c) > 110 else c
+        txt = "С %s.%s.%s вступает в силу: %s" % (day, mon, year, c)
+        out.append((head, txt))
+    return out or None
+
+
 def fetch_telegram_source(source: SourceModel, limit: int = 20) -> int:
     username = source.url.rstrip("/").split("/")[-1].lstrip("@")
     try:
@@ -75,6 +97,24 @@ def fetch_telegram_source(source: SourceModel, limit: int = 20) -> int:
                     published_at = datetime.fromisoformat(time_el["datetime"])
                 except ValueError:
                     published_at = None
+
+            _parts = split_calendar(title, body)
+            if _parts:
+                for _n, (_h, _t) in enumerate(_parts, 1):
+                    _it = RawItemModel(
+                        source_id=source.id, source_type="telegram",
+                        url=link, title=_h[:2000], body=_t[:8000],
+                        published_at=published_at,
+                        fetched_at=datetime.now(timezone.utc),
+                        raw_hash=_raw_hash("%s#%d" % (link, _n)),
+                        status="new")
+                    session.add(_it)
+                    try:
+                        session.commit()
+                        inserted += 1
+                    except IntegrityError:
+                        session.rollback()
+                continue
 
             item = RawItemModel(
                 source_id=source.id,
