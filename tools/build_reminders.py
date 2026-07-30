@@ -269,11 +269,6 @@ def main() -> int:
                 "doc_number": c.get("doc_number", ""),
                 "effective_date": c.get("effective_date", ""),
             })
-            session.execute(
-                text("INSERT INTO ved_reminders_sent (raw_item_id, kind) "
-                     "VALUES (:i, :k) ON CONFLICT DO NOTHING"),
-                {"i": raw_id, "k": kind},
-            )
             added += 1
 
     if not a.dry and added:

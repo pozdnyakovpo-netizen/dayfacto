@@ -206,7 +206,7 @@ def main() -> int:
             print("- %s (%s)" % (title[:46], change.get("reason", "")[:40]))
             continue
 
-        draft = generate(router, change, source_url=url)
+        draft = generate(router, change, source_url=url, source_text=body)
         llm_calls += 1
         if not draft.ok:
             print("- брак: %s (%s)" % (title[:40], "; ".join(draft.problems)[:50]))

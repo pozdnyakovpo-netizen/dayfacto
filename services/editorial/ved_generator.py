@@ -133,6 +133,10 @@ def _forbidden_numbers(post: str, allowed: str) -> list:
         loose = r"\s*".join(digits)
         if re.search(loose, allowed):
             continue
+        parts = [x for x in re.findall(r"\d+", token) if x]
+        if len(parts) > 1 and all(
+                re.search(r"\b%s\b" % re.escape(x), allowed) for x in parts):
+            continue
         bad.append(token.strip())
     return bad
 
@@ -144,7 +148,7 @@ CLICHE = [
 ]
 
 
-def _check(d: VedDraft, facts: str) -> None:
+def _check(d: VedDraft, facts: str, source: str = "") -> None:
     if not d.headline:
         d.problems.append("нет заголовка")
         return
@@ -158,6 +162,7 @@ def _check(d: VedDraft, facts: str) -> None:
         if c in whole:
             d.problems.append("штамп: %s" % c)
 
+    facts = facts + "\n" + (source or "")
     bad = _forbidden_numbers(
         " ".join([d.headline, d.what_changes, d.who, d.what_to_do]), facts
     )
@@ -175,7 +180,8 @@ def _check(d: VedDraft, facts: str) -> None:
 
 
 def generate(router, change: dict, story_id: int = 0,
-             source_url: str = "", source_name: str = "alta.ru") -> VedDraft:
+             source_url: str = "", source_name: str = "alta.ru",
+             source_text: str = "") -> VedDraft:
     """change - словарь из ranking.scorers.ved_extract.extract()."""
     d = VedDraft(story_id=story_id)
 
@@ -238,7 +244,7 @@ def generate(router, change: dict, story_id: int = 0,
             doc + " — " if doc else "", url or source_name
         )
 
-        _check(d, facts)
+        _check(d, facts, source_text)
         return d
 
     d.problems.append(last)

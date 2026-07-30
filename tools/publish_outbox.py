@@ -44,6 +44,32 @@ def send(token: str, chat: str, text: str) -> int:
     return 0
 
 
+def _mark_sent(post, mid, chat):
+    import os
+    from sqlalchemy import create_engine, text as _t
+    url = os.environ.get("DATABASE_URL")
+    if not url:
+        return
+    iid = str(post.get("item_id") or "")
+    try:
+        db = create_engine(url)
+        with db.begin() as c:
+            base, _, kind = iid.rpartition("-")
+            if kind in ("d1", "d7", "d30") and base:
+                c.execute(_t("INSERT INTO ved_reminders_sent (raw_item_id, kind) "
+                             "VALUES (CAST(:i AS uuid), :k) ON CONFLICT DO NOTHING"),
+                          {"i": base, "k": kind})
+            else:
+                c.execute(_t("INSERT INTO published_stories "
+                             "(story_id, message_id, chat_id, headline) "
+                             "VALUES (CAST(:i AS uuid), :m, :c, :h) "
+                             "ON CONFLICT DO NOTHING"),
+                          {"i": iid, "m": mid, "c": str(chat),
+                           "h": (post.get("title") or "")[:300]})
+    except Exception as exc:
+        print("  (журнал в БД не записан: %s)" % str(exc)[:90])
+
+
 def main() -> int:
     token = os.environ.get("TELEGRAM_BOT_TOKEN", "")
     chat = os.environ.get("TELEGRAM_TARGET_CHAT", "")
@@ -80,6 +106,7 @@ def main() -> int:
             failed.append(post)
             continue
         print("отправлено #%s: %s" % (mid, post.get("title", "")[:50]))
+        _mark_sent(post, mid, chat)
         log.append({
             "item_id": post.get("item_id"),
             "title": post.get("title"),
