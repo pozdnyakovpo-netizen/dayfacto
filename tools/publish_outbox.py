@@ -139,7 +139,10 @@ def _mark_sent(post, mid, chat):
     url = os.environ.get("DATABASE_URL")
     if not url:
         return
+    import re as _re, uuid as _uuid
     iid = str(post.get("item_id") or "")
+    if not _re.match(r"^[0-9a-fA-F-]{36}$", iid):
+        iid = str(_uuid.uuid5(_uuid.NAMESPACE_URL, "dayfacto:" + iid))
     try:
         db = create_engine(url)
         with db.begin() as c:
