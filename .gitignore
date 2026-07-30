@@ -1,5 +1,9 @@
-.env
-.env.*
+logs/
+*.bak
+*.bak2
 __pycache__/
 *.pyc
+.env
+.env.backup
+.env.bak
 infra/certs/
