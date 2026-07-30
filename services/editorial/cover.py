@@ -2,7 +2,7 @@ import os
 import re
 from PIL import Image, ImageDraw, ImageFont
 
-W, H = 1200, 630
+W, H = 1200, 900
 SS = 2
 
 GRAPHITE = (15, 19, 24)
@@ -57,31 +57,31 @@ def make(headline, change_type="", effective_date="", note="",
 
     d.rectangle((pad // 2, pad // 2, W * SS - pad // 2, H * SS - pad // 2),
                 outline=LINE, width=2 * SS)
-    d.rectangle((pad, pad, pad + 6 * SS, pad + 84 * SS), fill=accent)
+    d.rectangle((pad, pad, pad + 6 * SS, pad + 96 * SS), fill=accent)
 
     badge = "Срок" if urgent else BADGE.get(change_type, "Изменение")
     d.text((pad + 30 * SS, pad + 22 * SS), badge.upper(),
-           font=_f("Inter-SemiBold.ttf", 22), fill=accent)
+           font=_f("Inter-SemiBold.ttf", 26), fill=accent)
 
-    fh = _f("InterDisplay-SemiBold.ttf", 54)
-    y = pad + 130 * SS
+    fh = _f("InterDisplay-SemiBold.ttf", 66)
+    y = pad + 190 * SS
     for ln in _wrap(d, headline, fh, W * SS - pad * 2 - 20 * SS)[:3]:
         d.text((pad, y), ln, font=fh, fill=LIGHT)
-        y += 72 * SS
+        y += 88 * SS
 
     if note:
-        fn = _f("Inter-Regular.ttf", 26)
+        fn = _f("Inter-Regular.ttf", 30)
         y += 14 * SS
         for ln in _wrap(d, note, fn, W * SS - pad * 2)[:2]:
             d.text((pad, y), ln, font=fn, fill=MUTED)
-            y += 38 * SS
+            y += 44 * SS
 
     ly = H * SS - pad - 76 * SS
     d.line([(pad, ly), (W * SS - pad, ly)], fill=LINE, width=2 * SS)
     d.text((pad, ly + 26 * SS), effective_date or "",
-           font=_f("Inter-Medium.ttf", 28), fill=LIGHT)
+           font=_f("Inter-Medium.ttf", 32), fill=LIGHT)
 
-    fs = _f("Inter-Regular.ttf", 24)
+    fs = _f("Inter-Regular.ttf", 28)
     tw = d.textlength(BRAND, font=fs)
     d.text((W * SS - pad - tw, ly + 28 * SS), BRAND, font=fs, fill=MUTED)
 
