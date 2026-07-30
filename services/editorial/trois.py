@@ -52,7 +52,7 @@ def parse(body):
 def _chips(items, limit=14):
     esc = [html.escape(x, quote=False) for x in items[:limit]]
     tail = "" if len(items) <= limit else " и ещё %d" % (len(items) - limit)
-    return " · ".join("<code>%s</code>" % x for x in esc) + tail
+    return " · ".join(esc) + tail
 
 
 def build(data, url="https://www.alta.ru/rois/"):
