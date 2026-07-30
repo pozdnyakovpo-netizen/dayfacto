@@ -44,6 +44,22 @@ def send(token: str, chat: str, text: str) -> int:
     return 0
 
 
+def _doc_published(post):
+    import os
+    from sqlalchemy import create_engine, text as _t
+    doc = (post.get("doc_number") or "").strip()
+    url = os.environ.get("DATABASE_URL")
+    if len(doc) < 8 or not url:
+        return None
+    try:
+        with create_engine(url).connect() as c:
+            r = c.execute(_t("SELECT doc_number FROM published_stories "
+                             "WHERE doc_number = :d LIMIT 1"), {"d": doc}).first()
+        return r[0] if r else None
+    except Exception:
+        return None
+
+
 def _mark_sent(post, mid, chat):
     import os
     from sqlalchemy import create_engine, text as _t
@@ -61,11 +77,12 @@ def _mark_sent(post, mid, chat):
                           {"i": base, "k": kind})
             else:
                 c.execute(_t("INSERT INTO published_stories "
-                             "(story_id, message_id, chat_id, headline) "
-                             "VALUES (CAST(:i AS uuid), :m, :c, :h) "
+                             "(story_id, message_id, chat_id, headline, doc_number) "
+                             "VALUES (CAST(:i AS uuid), :m, :c, :h, :d) "
                              "ON CONFLICT DO NOTHING"),
                           {"i": iid, "m": mid, "c": str(chat),
-                           "h": (post.get("title") or "")[:300]})
+                           "h": (post.get("title") or "")[:300],
+                           "d": (post.get("doc_number") or "")[:500]})
     except Exception as exc:
         print("  (журнал в БД не записан: %s)" % str(exc)[:90])
 
@@ -98,6 +115,10 @@ def main() -> int:
     for post in posts:
         if post.get("item_id") in already:
             print("уже отправлено: %s" % post.get("title", "")[:50])
+            continue
+        _dup = _doc_published(post)
+        if _dup:
+            print("пропуск, документ уже освещался: %s" % _dup[:60])
             continue
         try:
             mid = send(token, chat, post["text"])
