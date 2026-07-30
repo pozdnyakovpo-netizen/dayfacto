@@ -88,3 +88,29 @@ def make(headline, change_type="", effective_date="", note="",
     os.makedirs(os.path.dirname(out), exist_ok=True)
     img.resize((W, H), Image.LANCZOS).save(out)
     return out
+
+
+def brand(out="/app/outbox/pinned.png"):
+    img = Image.new("RGB", (W * SS, H * SS), GRAPHITE)
+    d = ImageDraw.Draw(img)
+    pad = 90 * SS
+    d.rectangle((pad // 2, pad // 2, W * SS - pad // 2, H * SS - pad // 2),
+                outline=LINE, width=2 * SS)
+    d.rectangle((pad, pad + 20 * SS, pad + 8 * SS, pad + 250 * SS), fill=EMERALD)
+    fh = _f("InterDisplay-SemiBold.ttf", 68)
+    d.text((pad + 42 * SS, pad + 18 * SS), "ВЭД:", font=fh, fill=LIGHT)
+    d.text((pad + 42 * SS, pad + 100 * SS), "что меняется", font=fh, fill=LIGHT)
+    fn = _f("Inter-Regular.ttf", 30)
+    d.text((pad + 42 * SS, pad + 206 * SS),
+           "Изменения в таможне и ВЭД — с датой и документом",
+           font=fn, fill=MUTED)
+    ly = H * SS - pad - 120 * SS
+    d.line([(pad, ly), (W * SS - pad, ly)], fill=LINE, width=2 * SS)
+    fi = _f("Inter-Medium.ttf", 26)
+    x = pad
+    for it in ("Ставки и коды ТН ВЭД", "Даты вступления", "Что делать бизнесу"):
+        d.text((x, ly + 40 * SS), it, font=fi, fill=LIGHT)
+        x += int(d.textlength(it, font=fi)) + 60 * SS
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    img.resize((W, H), Image.LANCZOS).save(out)
+    return out
