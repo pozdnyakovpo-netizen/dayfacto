@@ -201,7 +201,7 @@ def is_publishable(c: dict) -> tuple:
 def _ask(provider, text: str) -> dict:
     resp = provider.generate(LLMRequest(
         system=SYSTEM, user=text, json_schema=SCHEMA,
-        temperature=0.0, max_tokens=700, meta={"task": "ved_extract"},
+        temperature=0.0, max_tokens=1400, meta={"task": "ved_extract"},
     ))
     d = resp.data or {}
     out = dict(EMPTY)
@@ -227,30 +227,7 @@ def extract(router, title: str, body: str = "") -> dict:
       problems    - список расхождений с источником
     """
     source = "%s\n\n%s" % (title, body)
-    task = "Извлеки факты из материала ниже в JSON по схеме. "
-    task += "Ответь одним объектом JSON и ничем больше. "
-    task += "Используй РОВНО эти ключи верхнего уровня, без вложенности: "
-    task += "change_type, what, tnved_codes, countries, direction, goods, "
-    task += "value_old, value_new, effective_date, date_status, date_raw, "
-    task += "impact, impact_note, doc_number, stage, scope. "
-    task += "goods - конкретные товары или номенклатура. "
-    task += "scope - НА ЧТО распространяется требование: категории, "
-    task += "виды транспорта, процедуры, исключения и условия. "
-    task += "Формулировки вида \"все X, кроме исключений, определяемых Y\" "
-    task += "переноси в scope ДОСЛОВНО, не заменяй перечнем. "
-    task += "Если охват описан словами, а не списком товаров - "
-    task += "goods пустой, scope обязателен. "
-    task += "Если срок указан только месяцем без числа (АВГУСТ 2026), "
-    task += "ставь date_status=month и effective_date пустым. "
-
-    task += "В doc_number укажи ПОЛНОЕ название документа как в тексте: "
-    task += "вид, орган, дата и номер. Не сокращай до одного номера. "
-    task += "Если органа в тексте нет - оставь пустым, не додумывай. "
-    task += "Пустой doc_number НЕ мешает заполнить остальные поля: "
-    task += "change_type и impact определяй по сути изменения. "
-    task += "Поля tnved_codes и countries - списки строк, остальные строки. "
-    task += "Не создавай других ключей и не оборачивай ответ в список.\n\n"
-    task += "МАТЕРИАЛ:\n"
+    task = "МАТЕРИАЛ:\n"
     text = task + source.strip()[:3500]
     primary = router._resolve("ved_extract").name
     order = [primary] + [n for n in router.providers if n != primary]
@@ -311,3 +288,35 @@ def sanitize(c):
     if c.get("date_status") == "none":
         c["effective_date"] = ""
     return c
+
+
+SYSTEM = SYSTEM + """
+
+ФОРМАТ ОТВЕТА
+Отвечай одним объектом JSON и ничем больше: без преамбулы, без
+пояснений, без markdown-обрамления. Ключи верхнего уровня строго
+эти, без вложенности: change_type, what, tnved_codes, countries,
+direction, goods, value_old, value_new, effective_date, date_status,
+date_raw, impact, impact_note, doc_number, stage, scope.
+
+ПОЛЕ goods: конкретные товары или номенклатура, названные в тексте.
+
+ПОЛЕ scope: на что распространяется требование - категории товаров,
+виды транспорта, таможенные процедуры, исключения и условия.
+Конструкции вида "все X, кроме исключений, определяемых органом Y"
+переноси сюда дословно и целиком. Не заменяй их перечнем и не
+сокращай. Если охват описан словами, а не списком товаров, поле
+goods оставь пустым, а scope заполни обязательно.
+
+ПОЛЕ doc_number: полное название документа как в тексте - вид акта,
+принявший орган, дата и номер. Не сокращай до одного номера. Если
+орган в тексте не назван, оставь пустым и не додумывай. Пустой
+doc_number не мешает заполнить остальные поля: change_type и impact
+определяй по сути изменения.
+
+СРОКИ: если срок указан только месяцем без числа, ставь
+date_status=month и effective_date пустым.
+
+ТИПЫ: tnved_codes и countries - списки строк, остальные поля строки.
+Не создавай других ключей и не оборачивай ответ в список.
+"""

@@ -62,7 +62,10 @@ def fetch_telegram_source(source: SourceModel, limit: int = 20) -> int:
             if not raw_text:
                 continue
 
-            title = raw_text.split("\n")[0][:2000]
+            _lines = [l.strip() for l in raw_text.split("\n")]
+            _good = [l for l in _lines
+                     if len(re.sub(r"[^\w\s]", "", l).strip()) >= 15]
+            title = (_good[0] if _good else re.sub(r"\s+", " ", raw_text).strip())[:2000]
             body = re.sub(r"\s+", " ", raw_text).strip()[:8000]
 
             time_el = msg.select_one("time")

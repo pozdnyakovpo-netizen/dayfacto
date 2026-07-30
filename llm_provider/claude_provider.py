@@ -36,7 +36,9 @@ class ClaudeProvider(BaseProvider):
             "model": self.model,
             "max_tokens": req.max_tokens,
             "temperature": req.temperature,
-            "system": req.system,
+            "system": [{"type": "text", "text": req.system,
+                        "cache_control": {"type": "ephemeral"}}]
+            if req.system and len(req.system) > 3000 else req.system,
             "messages": [{"role": "user", "content": req.user}],
         }
         # Префилл "{" резко повышает вероятность чистого JSON без преамбулы.

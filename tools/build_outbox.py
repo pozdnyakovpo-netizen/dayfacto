@@ -79,6 +79,22 @@ KEEP_PATTERNS = [
 ]
 
 
+TG_NOISE = ("курс валют", "сводка новостей", "прайс-лист", "вебинар",
+            "онлайн-курс", "поможем", "сделаем", "срочно доставим",
+            "подпишись", "розыгрыш", "вакансия", "приглашаем",
+            "channel created", "реклама", "erid")
+
+
+def tg_noise(title, body=""):
+    t = (title or "").lower()
+    for w in TG_NOISE:
+        if w in t:
+            return "тг-шум: " + w
+    if len((title or "").strip()) < 25 and len((body or "").strip()) < 200:
+        return "тг: слишком коротко"
+    return ""
+
+
 def prefilter(title: str) -> str:
     """Возвращает причину отсева или пустую строку."""
     low = re.sub(r"\d+", " ", title.lower())
@@ -146,7 +162,9 @@ def main() -> int:
                 SourceModel.name.like('Альта%') |
                 SourceModel.name.like('SeaNews%') |
                 SourceModel.name.like('LogiRus%') |
-                SourceModel.name.like('ФТС%'))
+                SourceModel.name.like('ФТС%') |
+                SourceModel.name.like('ТГ%') |
+                SourceModel.name.like('InfraNews%'))
         .order_by(SourceModel.weight.desc(),
                   RawItemModel.published_at.desc())
         .limit(a.limit)
@@ -183,6 +201,8 @@ def main() -> int:
         if len(ready) >= a.max_posts:
             break
         reason = topical_skip(src_name, title, body) or prefilter(title)
+        if not reason and src_name.startswith("ТГ"):
+            reason = tg_noise(title, body)
         if reason:
             skipped += 1
             print("- %s (%s)" % (title[:46], reason))
