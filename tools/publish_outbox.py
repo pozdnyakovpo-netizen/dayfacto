@@ -60,6 +60,9 @@ def send_photo(token, chat, text, post):
     import re, uuid, urllib.request
     if len(text) > 1000:
         return None
+    _ready = post.get("cover") or ""
+    if _ready and os.path.exists(_ready):
+        return _send_img(token, chat, text, _ready)
     try:
         from services.editorial.cover import make, urgent_cover
         head = re.sub(r"<[^>]+>", "", (post.get("title") or "")).strip()

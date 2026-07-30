@@ -207,7 +207,27 @@ def main() -> int:
         monday = today - timedelta(days=today.weekday())
         sunday = monday + timedelta(days=6)
         week = sorted([(e, c, u) for _i, e, c, u in items
-                       if monday <= e <= sunday])
+                       if monday <= e <= sunday], key=lambda t: t[0])
+        def _fp(c):
+            import re as _re
+            t = ((c.get("what") or "") + " " + (c.get("headline") or "")).lower()
+            w = [x[:6] for x in _re.findall(r"[а-яёa-z]{6,}", t)]
+            return set(w)
+
+        _uniq = []
+        for _e, _c, _u in week:
+            _f = _fp(_c)
+            _dup = False
+            for _pe, _pc, _pu in _uniq:
+                if _pe != _e:
+                    continue
+                _pf = _fp(_pc)
+                if _f and _pf and len(_f & _pf) / max(len(_f | _pf), 1) > 0.22:
+                    _dup = True
+                    break
+            if not _dup:
+                _uniq.append((_e, _c, _u))
+        week = _uniq
         if not week:
             print("на этой неделе ничего не вступает в силу")
             session.close()
@@ -215,8 +235,22 @@ def main() -> int:
         text_ = digest_text(week, monday, sunday)
         print("=" * 55)
         print(text_)
+        _cov = ""
+        try:
+            from services.editorial.cover import digest_cover, BADGE
+            _items = []
+            for _eff, _c, _u in week[:4]:
+                _th = BADGE.get(_c.get("change_type"), "Изменение")
+                _gi = (_c.get("headline") or _c.get("what") or "").strip()
+                _items.append((_th, _gi[:90]))
+            _cov = digest_cover("%s — %s" % (ru_date(monday), ru_date(sunday)),
+                                _items, out="/app/outbox/_digest.png")
+        except Exception as _e:
+            print("(обложка дайджеста не собрана: %s)" % str(_e)[:80])
+
         if not a.dry:
             queue.append({
+                "cover": _cov,
                 "item_id": "digest-%s" % monday.isoformat(),
                 "title": "Дайджест недели %s" % monday.isoformat(),
                 "text": text_,
