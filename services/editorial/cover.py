@@ -209,3 +209,28 @@ def digest_cover(period, items, out="/app/outbox/_digest.png"):
         y += ch + 18 * SS
     _footer(d, pad, "Что вступает в силу на этой неделе")
     return _save(img, out)
+
+
+def trois_cover(period, n_added, n_freed, out="/app/outbox/_trois.png"):
+    img = Image.new("RGB", (W * SS, H * SS), GRAPHITE)
+    d = ImageDraw.Draw(img)
+    pad = 80 * SS
+    _frame(d, pad, AMBER, "ТРОИС · Реестр")
+
+    d.text((pad, pad + 160 * SS), "Реестр товарных знаков",
+           font=_f("InterDisplay-SemiBold.ttf", 58), fill=LIGHT)
+    if period:
+        d.text((pad, pad + 245 * SS), period,
+               font=_f("Inter-Regular.ttf", 30), fill=MUTED)
+
+    y = pad + 330 * SS
+    fn = _f("InterDisplay-SemiBold.ttf", 72)
+    fl = _f("Inter-Regular.ttf", 26)
+    for val, label, col in ((n_added, "новых знаков", AMBER),
+                            (n_freed, "защита снята", JADE)):
+        d.text((pad, y), str(val), font=fn, fill=col)
+        d.text((pad + 110 * SS, y + 30 * SS), label, font=fl, fill=MUTED)
+        y += 100 * SS
+
+    _footer(d, pad, "Проверьте свою номенклатуру")
+    return _save(img, out)
