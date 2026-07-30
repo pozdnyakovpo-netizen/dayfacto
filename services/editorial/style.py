@@ -67,4 +67,10 @@ def build_post(d):
     if tail.strip():
         out += ["", tail]
 
-    return "\n".join(out).strip()
+    res = "\n".join(out).strip()
+    plain = re.sub(r"<[^>]+>", "", res)
+    if len(plain) > 980 and lead:
+        short = lead[:260].rsplit(" ", 1)[0].rstrip(" ,.;") + "."
+        out[out.index(mono(esc(lead)))] = mono(esc(short))
+        res = "\n".join(out).strip()
+    return res

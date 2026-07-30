@@ -26,7 +26,7 @@ from db.models import RawItemModel, SourceModel          # noqa: E402
 from db.session import get_session                       # noqa: E402
 from llm_provider import build_default_router            # noqa: E402
 from tools.topical import topical_skip
-from tools.autogate import risky
+from tools.autogate import risky, strip_unsupported
 from ranking.scorers.ved_extract import extract          # noqa: E402
 from services.editorial.ved_generator import generate    # noqa: E402
 
@@ -234,6 +234,15 @@ def main() -> int:
 
         _post = {"title": draft.headline, "text": draft.render()}
         _hold = risky(_post, change, body)
+        if _hold and _hold.startswith("утверждение вне источника"):
+            for _fld in ("what_changes", "who", "what_to_do"):
+                _v = getattr(draft, _fld, "")
+                if _v:
+                    setattr(draft, _fld, strip_unsupported(_v, change, body))
+            _post = {"title": draft.headline, "text": draft.render()}
+            _hold = risky(_post, change, body)
+            if not _hold:
+                print("~ вычищен домысел: %s" % draft.headline[:44])
         if _hold:
             held.append({"title": draft.headline, "reason": _hold})
             print("~ отложен: %s (%s)" % (draft.headline[:44], _hold))

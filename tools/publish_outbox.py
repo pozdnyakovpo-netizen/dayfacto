@@ -58,7 +58,8 @@ def _send_img(token, chat, text, img):
 def send_photo(token, chat, text, post):
     """Пост с обложкой. Возвращает message_id или None."""
     import re, uuid, urllib.request
-    if len(text) > 1000:
+    import re as _re
+    if len(_re.sub(r"<[^>]+>", "", text)) > 1000:
         return None
     _ready = post.get("cover") or ""
     if _ready and os.path.exists(_ready):

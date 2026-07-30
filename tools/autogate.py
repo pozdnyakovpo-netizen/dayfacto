@@ -45,3 +45,18 @@ def risky(post, change, source=""):
             return "касается одной страны: %s" % w.strip()
 
     return None
+
+
+def strip_unsupported(text, change, source=""):
+    """Убирает предложения с утверждениями, которых нет в источнике."""
+    import re as _re
+    import json as _j
+    hard = {k: v for k, v in change.items()
+            if k not in ("impact_note", "what", "reason", "problems")}
+    facts = (_j.dumps(hard, ensure_ascii=False) + " " + (source or "")).lower()
+    keep = []
+    for sent in _re.split(r"(?<=[.!?])\s+", text or ""):
+        low = sent.lower()
+        if not any(w in low and w not in facts for w in RISK):
+            keep.append(sent)
+    return " ".join(keep).strip()
