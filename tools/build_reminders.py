@@ -23,6 +23,7 @@ build_outbox.py. Отдельных обращений к модели нет - 
 """
 
 import argparse
+import re
 import json
 import os
 import pathlib
@@ -113,7 +114,11 @@ def reminder_text(c: dict, eff: date, days: int, url: str, src_text: str = "") -
     if aud:
         lines += ["", "Кого касается: " + aud]
 
-    old, new = c.get("value_old") or "", c.get("value_new") or ""
+    def _short(v, n=90):
+        v = re.sub(r"\s+", " ", (v or "").strip())
+        return v if len(v) <= n else v[:n].rsplit(" ", 1)[0] + "…"
+
+    old, new = _short(c.get("value_old")), _short(c.get("value_new"))
     if new:
         if old:
             lines += ["", "Значение: было %s, станет %s." % (old, new)]
@@ -268,6 +273,12 @@ def main() -> int:
             session.execute(text("SELECT raw_item_id, kind "
                                  "FROM ved_reminders_sent"))}
 
+    SUBJ = {}
+    for _r, _s in session.execute(text(
+            "SELECT raw_item_id, subject_id FROM ved_subject_items")):
+        SUBJ[str(_r)] = str(_s)
+    seen_subj = set()
+
     added = 0
     for raw_id, eff, c, url in sorted(items, key=lambda x: x[1]):
         days = (eff - today).days
@@ -285,6 +296,11 @@ def main() -> int:
         if (str(raw_id), kind) in sent:
             continue
 
+        _sj = SUBJ.get(str(raw_id))
+        if _sj and (_sj, kind) in seen_subj:
+            continue
+        if _sj:
+            seen_subj.add((_sj, kind))
         text_ = reminder_text(c, eff, days, url, SRC.get(raw_id, ""))
         print("=" * 55)
         print("[%s, через %d дн.]" % (kind, days))
