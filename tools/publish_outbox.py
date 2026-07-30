@@ -33,23 +33,8 @@ def _ru(iso):
         return ""
 
 
-def send_photo(token, chat, text, post):
-    """Пост с обложкой. Возвращает message_id или None."""
-    import re, uuid, urllib.request
-    if len(text) > 1000:
-        return None
-    try:
-        from services.editorial.cover import make
-        head = re.sub(r"<[^>]+>", "", (post.get("title") or "")).strip()
-        img = make(head[:160],
-                   change_type=post.get("change_type", ""),
-                   effective_date=_ru(post.get("effective_date") or ""),
-                   note=(post.get("doc_number") or "")[:110],
-                   urgent=str(post.get("item_id", "")).endswith(("-d1", "-d7")),
-                   out="/app/outbox/_cover.png")
-    except Exception as exc:
-        print("  (обложка не собрана: %s)" % str(exc)[:80])
-        return None
+def _send_img(token, chat, text, img):
+    import uuid, urllib.request
     b = uuid.uuid4().hex
     parts = []
     for k, v in (("chat_id", chat), ("caption", text), ("parse_mode", "HTML")):
@@ -68,6 +53,34 @@ def send_photo(token, chat, text, post):
     except Exception as exc:
         print("  (sendPhoto не прошёл: %s)" % str(exc)[:80])
         return None
+
+
+def send_photo(token, chat, text, post):
+    """Пост с обложкой. Возвращает message_id или None."""
+    import re, uuid, urllib.request
+    if len(text) > 1000:
+        return None
+    try:
+        from services.editorial.cover import make, urgent_cover
+        head = re.sub(r"<[^>]+>", "", (post.get("title") or "")).strip()
+        head = re.sub(r"^Напоминание d\d+:\s*", "", head)
+        if str(post.get("item_id", "")).endswith(("-d1", "-d7", "-d30")):
+            img = urgent_cover(head[:150],
+                               footer=_ru(post.get("effective_date") or ""),
+                               action=(post.get("doc_number") or "")[:120],
+                               out="/app/outbox/_cover.png")
+            return _send_img(token, chat, text, img)
+        img = make(head[:160],
+                   change_type=post.get("change_type", ""),
+                   effective_date=_ru(post.get("effective_date") or ""),
+                   note=(post.get("doc_number") or "")[:110],
+                   urgent=str(post.get("item_id", "")).endswith(("-d1", "-d7")),
+                   out="/app/outbox/_cover.png")
+    except Exception as exc:
+        print("  (обложка не собрана: %s)" % str(exc)[:80])
+        return None
+    return _send_img(token, chat, text, img)
+
 
 
 def send(token: str, chat: str, text: str) -> int:

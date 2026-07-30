@@ -11,6 +11,8 @@ LIGHT = (243, 245, 244)
 MUTED = (167, 178, 173)
 LINE = (39, 48, 56)
 AMBER = (200, 146, 46)
+JADE = (45, 156, 116)
+SLATE = (22, 28, 34)
 
 FD = os.environ.get("FONTS_DIR", "/app/assets/fonts")
 BRAND = "ВЭД: что меняется"
@@ -59,7 +61,7 @@ def make(headline, change_type="", effective_date="", note="",
                 outline=LINE, width=2 * SS)
     d.rectangle((pad, pad, pad + 6 * SS, pad + 96 * SS), fill=accent)
 
-    badge = "Срок" if urgent else BADGE.get(change_type, "Изменение")
+    badge = badge_for(change_type, note, headline, urgent)
     d.text((pad + 30 * SS, pad + 22 * SS), badge.upper(),
            font=_f("Inter-SemiBold.ttf", 26), fill=accent)
 
@@ -114,3 +116,96 @@ def brand(out="/app/outbox/pinned.png"):
     os.makedirs(os.path.dirname(out), exist_ok=True)
     img.resize((W, H), Image.LANCZOS).save(out)
     return out
+
+
+ORG_MARKERS = (
+    ("ЕАЭС", ("еэк", "евразийск", "еаэс")),
+    ("ФТС", ("фтс", "таможенн служб")),
+    ("Правительство", ("правительств", "постановлен", "распоряжен")),
+    ("Сертификация", ("сертифик", "соответств", "росаккредитац")),
+    ("Логистика", ("перевозк", "транзит", "логистик", "порт")),
+)
+
+
+def badge_for(change_type="", doc_number="", text="", urgent=False):
+    if urgent:
+        return "Сроки"
+    hay = ((doc_number or "") + " " + (text or "")).lower()
+    org = ""
+    for name, keys in ORG_MARKERS:
+        if any(k in hay for k in keys):
+            org = name
+            break
+    typ = BADGE.get(change_type, "")
+    if org and typ:
+        return "%s · %s" % (org, typ)
+    return org or typ or "Изменение"
+
+
+def _frame(d, pad, accent, badge):
+    d.rectangle((pad // 2, pad // 2, W * SS - pad // 2, H * SS - pad // 2),
+                outline=LINE, width=2 * SS)
+    d.rectangle((pad, pad, pad + 6 * SS, pad + 96 * SS), fill=accent)
+    d.text((pad + 30 * SS, pad + 26 * SS), badge.upper(),
+           font=_f("Inter-SemiBold.ttf", 26), fill=accent)
+
+
+def _footer(d, pad, left):
+    ly = H * SS - pad - 76 * SS
+    d.line([(pad, ly), (W * SS - pad, ly)], fill=LINE, width=2 * SS)
+    d.text((pad, ly + 26 * SS), left or "",
+           font=_f("Inter-Medium.ttf", 32), fill=LIGHT)
+    fs = _f("Inter-Regular.ttf", 28)
+    tw = d.textlength(BRAND, font=fs)
+    d.text((W * SS - pad - tw, ly + 28 * SS), BRAND, font=fs, fill=MUTED)
+
+
+def _save(img, out):
+    os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
+    img.resize((W, H), Image.LANCZOS).save(out)
+    return out
+
+
+def urgent_cover(headline, footer="", action="", out="/app/outbox/_cover.png"):
+    img = Image.new("RGB", (W * SS, H * SS), GRAPHITE)
+    d = ImageDraw.Draw(img)
+    pad = 80 * SS
+    _frame(d, pad, AMBER, "Срочно")
+    fh = _f("InterDisplay-SemiBold.ttf", 62)
+    y = pad + 190 * SS
+    for ln in _wrap(d, headline, fh, W * SS - pad * 2 - 20 * SS)[:3]:
+        d.text((pad, y), ln, font=fh, fill=LIGHT)
+        y += 84 * SS
+    if action:
+        y += 30 * SS
+        d.line([(pad, y), (pad + 120 * SS, y)], fill=AMBER, width=3 * SS)
+        y += 28 * SS
+        fa = _f("Inter-Medium.ttf", 30)
+        for ln in _wrap(d, action, fa, W * SS - pad * 2)[:3]:
+            d.text((pad, y), ln, font=fa, fill=MUTED)
+            y += 44 * SS
+    _footer(d, pad, footer)
+    return _save(img, out)
+
+
+def digest_cover(period, items, out="/app/outbox/_digest.png"):
+    img = Image.new("RGB", (W * SS, H * SS), GRAPHITE)
+    d = ImageDraw.Draw(img)
+    pad = 80 * SS
+    _frame(d, pad, JADE, "Дайджест недели")
+    d.text((pad, pad + 150 * SS), period,
+           font=_f("InterDisplay-SemiBold.ttf", 56), fill=LIGHT)
+    y = pad + 260 * SS
+    ft = _f("Inter-Medium.ttf", 32)
+    fs = _f("Inter-Regular.ttf", 27)
+    for theme, gist in list(items)[:4]:
+        ch = 108 * SS
+        d.rectangle((pad, y, W * SS - pad, y + ch), fill=SLATE)
+        d.rectangle((pad, y, pad + 5 * SS, y + ch), fill=JADE)
+        d.text((pad + 28 * SS, y + 20 * SS), theme, font=ft, fill=LIGHT)
+        g = _wrap(d, gist, fs, W * SS - pad * 2 - 56 * SS)
+        if g:
+            d.text((pad + 28 * SS, y + 62 * SS), g[0], font=fs, fill=MUTED)
+        y += ch + 18 * SS
+    _footer(d, pad, "Что вступает в силу на этой неделе")
+    return _save(img, out)
