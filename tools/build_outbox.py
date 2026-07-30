@@ -169,6 +169,7 @@ def main() -> int:
                 SourceModel.name.like('LogiRus%') |
                 SourceModel.name.like('ФТС%') |
                 SourceModel.name.like('ТГ%') |
+                SourceModel.name.like('ЕЭК%') |
                 SourceModel.name.like('InfraNews%'))
         .order_by(SourceModel.weight.desc(),
                   RawItemModel.published_at.desc())

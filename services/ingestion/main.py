@@ -37,6 +37,9 @@ def run_once() -> int:
             total_new += fetch_rss_source(source)
         elif source.type == "telegram":
             total_new += fetch_telegram_source(source)
+        elif source.type == "html":
+            from services.ingestion.html_list import fetch_html_source
+            total_new += fetch_html_source(source)
         else:
             logger.warning(f"Unknown source type '{source.type}' for source={source.name}, skipping.")
 
