@@ -36,6 +36,7 @@ case "$MODE" in
   posts)
     docker compose run --rm $MOUNT ingestion \
         python tools/build_outbox.py --limit 30 --max-posts 3 2>&1 | tee -a "$LOG"
+    docker compose run --rm $MOUNT ingestion python tools/publish_outbox.py 2>&1 | tee -a "$LOG"
     ;;
   reminders)
     docker compose run --rm $MOUNT ingestion \

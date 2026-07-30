@@ -26,6 +26,7 @@ from db.models import RawItemModel, SourceModel          # noqa: E402
 from db.session import get_session                       # noqa: E402
 from llm_provider import build_default_router            # noqa: E402
 from tools.topical import topical_skip
+from tools.autogate import risky
 from ranking.scorers.ved_extract import extract          # noqa: E402
 from services.editorial.ved_generator import generate    # noqa: E402
 
@@ -176,7 +177,7 @@ def main() -> int:
             pass
 
     router = build_default_router()
-    ready, skipped, cached, llm_calls = [], 0, 0, 0
+    ready, held, skipped, cached, llm_calls = [], [], 0, 0, 0
 
     for item_id, title, body, url, src_name in rows:
         if len(ready) >= a.max_posts:
@@ -211,6 +212,13 @@ def main() -> int:
             print("- брак: %s (%s)" % (title[:40], "; ".join(draft.problems)[:50]))
             continue
 
+        _post = {"title": draft.headline, "text": draft.render()}
+        _hold = risky(_post, change, body)
+        if _hold:
+            held.append({"title": draft.headline, "reason": _hold})
+            print("~ отложен: %s (%s)" % (draft.headline[:44], _hold))
+            continue
+
         ready.append({
             "item_id": str(item_id),
             "title": title[:200],
@@ -231,6 +239,11 @@ def main() -> int:
 
     print("\nотсеяно предфильтром: %d | из кэша: %d | обращений к LLM: %d"
           % (skipped, cached, llm_calls))
+
+    if held:
+        pathlib.Path(OUT.parent / "held.json").write_text(
+            json.dumps(held, ensure_ascii=False, indent=2), encoding="utf-8")
+        print("отложено (не подтверждено источником): %d" % len(held))
 
     if not ready:
         print("готовых постов нет")

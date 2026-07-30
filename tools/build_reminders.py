@@ -32,6 +32,7 @@ from datetime import date, timedelta
 sys.path.insert(0, "/app")
 
 from sqlalchemy import text                      # noqa: E402
+from tools.autogate import risky                 # noqa: E402
 
 from db.session import get_session               # noqa: E402
 
@@ -83,7 +84,13 @@ def audience(c: dict) -> str:
     return "; ".join(parts)
 
 
-def reminder_text(c: dict, eff: date, days: int, url: str) -> str:
+def _note_ok(note, source):
+    from tools.autogate import RISK
+    n, f = note.lower(), (source or "").lower()
+    return not any(w in n and w not in f for w in RISK)
+
+
+def reminder_text(c: dict, eff: date, days: int, url: str, src_text: str = "") -> str:
     what = (c.get("what") or "").strip().rstrip(".")
     doc = (c.get("doc_number") or "").strip()
 
@@ -114,7 +121,7 @@ def reminder_text(c: dict, eff: date, days: int, url: str) -> str:
             lines += ["", "Новое значение: %s." % new]
 
     note = (c.get("impact_note") or "").strip()
-    if note:
+    if note and _note_ok(note, src_text):
         note = note[0].upper() + note[1:]
         lines += ["", note.rstrip(".") + "."]
 
@@ -180,6 +187,14 @@ def main() -> int:
             continue
         items.append((raw_id, eff, c, url or ""))
 
+    SRC = {}
+    if items:
+        _ids = [str(i[0]) for i in items]
+        for _rid, _b in session.execute(
+                text("SELECT id, coalesce(body,'') FROM raw_items "
+                     "WHERE id = ANY(CAST(:ids AS uuid[]))"), {"ids": _ids}):
+            SRC[_rid] = _b
+
     if not items:
         print("нет сюжетов с точной датой вступления")
         session.close()
@@ -236,10 +251,15 @@ def main() -> int:
         if (str(raw_id), kind) in sent:
             continue
 
-        text_ = reminder_text(c, eff, days, url)
+        text_ = reminder_text(c, eff, days, url, SRC.get(raw_id, ""))
         print("=" * 55)
         print("[%s, через %d дн.]" % (kind, days))
         print(text_)
+
+        _hold = risky({"title": "", "text": text_}, c, SRC.get(raw_id, ""))
+        if _hold:
+            print("~ отложено: %s" % _hold)
+            continue
 
         if not a.dry:
             queue.append({
