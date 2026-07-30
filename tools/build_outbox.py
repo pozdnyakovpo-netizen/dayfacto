@@ -108,6 +108,9 @@ def cached_extract(session, router, item_id, title, body) -> dict:
         return data
 
     change = extract(router, title, body)
+    if not (change.get("what") or "").strip():
+        change["_cached"] = False
+        return change
     session.execute(
         text("INSERT INTO ved_extractions (raw_item_id, payload) "
              "VALUES (:i, CAST(:p AS JSONB)) ON CONFLICT DO NOTHING"),

@@ -1,0 +1,24 @@
+Российская газета	https://rg.ru/xml/index.xml
+Гарант: новости	https://www.garant.ru/rss/news/
+Консультант: правовые новости	https://www.consultant.ru/rss/hotdocs.xml
+Правительство России	http://government.ru/all/rss/
+Банк России	https://www.cbr.ru/rss/RssNews
+Ведомости	https://www.vedomosti.ru/rss/news
+Ведомости: экономика	https://www.vedomosti.ru/rss/rubric/economics
+РБК	https://rssexport.rbc.ru/rbcnews/news/30/full.rss
+Коммерсантъ	https://www.kommersant.ru/RSS/news.xml
+Коммерсантъ: экономика	https://www.kommersant.ru/RSS/section-economics.xml
+Frank Media	https://frankmedia.ru/feed
+Финам	https://www.finam.ru/analysis/conews/rsspoint/
+Vademecum	https://vademec.ru/rss/
+Медвестник	https://medvestnik.ru/rss/news.xml
+Хабр: новости	https://habr.com/ru/rss/news/
+CNews	https://www.cnews.ru/inc/rss/news.xml
+3DNews	https://3dnews.ru/news/rss/
+iXBT	https://www.ixbt.com/export/news.rss
+VC.ru	https://vc.ru/rss/all
+Минтруд	https://mintrud.gov.ru/rss
+Гидрометцентр	https://meteoinfo.ru/rss/forecasts
+Интерфакс	https://www.interfax.ru/rss.asp
+Лента.ру	https://lenta.ru/rss/news
+Право.ру	https://pravo.ru/rss/

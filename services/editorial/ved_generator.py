@@ -108,6 +108,7 @@ def _facts_block(c: dict) -> str:
         ("Страны", ", ".join(c.get("countries") or [])),
         ("Направление", c.get("direction")),
         ("Товары", c.get("goods")),
+        ("Охват требования", c.get("scope")),
         ("Прежнее значение", c.get("value_old")),
         ("Новое значение", c.get("value_new")),
         ("Дата вступления", c.get("effective_date")),

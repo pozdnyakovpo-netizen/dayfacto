@@ -18,6 +18,7 @@ SCHEMA = {
         "countries": {"type": "array", "items": {"type": "string"}},
         "direction": {"type": "string"},
         "goods": {"type": "string"},
+        "scope": {"type": "string"},
         "value_old": {"type": "string"},
         "value_new": {"type": "string"},
         "effective_date": {"type": "string"},
@@ -75,7 +76,7 @@ none - разговоры, намерения, статистика, служе�
 
 EMPTY = {
     "change_type": "", "what": "", "tnved_codes": [], "countries": [],
-    "direction": "", "goods": "", "value_old": "", "value_new": "",
+    "direction": "", "goods": "", "scope": "", "value_old": "", "value_new": "",
     "effective_date": "", "date_status": "none", "date_raw": "",
     "impact": "none", "impact_note": "", "doc_number": "", "stage": "adopted",
     "degraded": True, "provider": "",
@@ -231,7 +232,14 @@ def extract(router, title: str, body: str = "") -> dict:
     task += "Используй РОВНО эти ключи верхнего уровня, без вложенности: "
     task += "change_type, what, tnved_codes, countries, direction, goods, "
     task += "value_old, value_new, effective_date, date_status, date_raw, "
-    task += "impact, impact_note, doc_number, stage. "
+    task += "impact, impact_note, doc_number, stage, scope. "
+    task += "goods - конкретные товары или номенклатура. "
+    task += "scope - НА ЧТО распространяется требование: категории, "
+    task += "виды транспорта, процедуры, исключения и условия. "
+    task += "Формулировки вида \"все X, кроме исключений, определяемых Y\" "
+    task += "переноси в scope ДОСЛОВНО, не заменяй перечнем. "
+    task += "Если охват описан словами, а не списком товаров - "
+    task += "goods пустой, scope обязателен. "
     task += "Если срок указан только месяцем без числа (АВГУСТ 2026), "
     task += "ставь date_status=month и effective_date пустым. "
 
