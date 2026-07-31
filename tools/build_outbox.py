@@ -234,6 +234,13 @@ def main() -> int:
 
         draft = generate(router, change, source_url=url, source_text=body)
         llm_calls += 1
+        try:
+            from services.memory.context import subject_context, render_context
+            _ctx = subject_context(session, item_id)
+            draft.context_lines = render_context(
+                _ctx, change.get("effective_date") or "")
+        except Exception as _e:
+            draft.context_lines = []
         if not draft.ok:
             print("- брак: %s (%s)" % (title[:40], "; ".join(draft.problems)[:50]))
             continue

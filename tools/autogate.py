@@ -59,4 +59,9 @@ def strip_unsupported(text, change, source=""):
         low = sent.lower()
         if not any(w in low and w not in facts for w in RISK):
             keep.append(sent)
-    return " ".join(keep).strip()
+    res = " ".join(keep).strip()
+    res = _re.sub(r"[,;]\s*(за|и|или|в|с|на|по|к|от|до|при)\.?$", ".", res)
+    res = _re.sub(r"\s+([,.;])", r"\1", res)
+    if res and res[-1] not in ".!?":
+        res += "."
+    return res

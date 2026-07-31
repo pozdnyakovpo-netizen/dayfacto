@@ -55,6 +55,16 @@ def build_post(d):
     if todo:
         out += ["", "<b>Что делать</b>", mono(esc(todo))]
 
+    ctx = getattr(d, "context_lines", None) or []
+    conf = [c for c in ctx if c.startswith("▪")]
+    tail_ctx = [c for c in ctx if not c.startswith("▪")]
+    if conf:
+        pos = 2 if eff else 1
+        out[pos:pos] = conf
+    tail_ctx = [x for x in tail_ctx if x.strip()]
+    if tail_ctx:
+        out += [""] + tail_ctx
+
     src = getattr(d, "source_line", "") or ""
     m = re.search(r"https?://\S+", src)
     name = re.sub(r"^Источник:\s*", "", src)
