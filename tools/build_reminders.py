@@ -97,7 +97,7 @@ def reminder_text(c: dict, eff: date, days: int, url: str, src_text: str = "") -
 
     if days == 0:
         head = "Сегодня вступает в силу: %s" % what
-        lead = "Последний день по старым правилам."
+        lead = "Требование действует с сегодняшнего дня."
     elif days == 1:
         head = "Завтра вступает в силу: %s" % what
         lead = "Остался один день."
