@@ -27,6 +27,7 @@ from db.session import get_session                       # noqa: E402
 from llm_provider import build_default_router            # noqa: E402
 from tools.topical import topical_skip
 from tools.autogate import risky, strip_unsupported
+from services.memory.subjects import fingerprint, similarity
 from ranking.scorers.ved_extract import extract          # noqa: E402
 from services.editorial.ved_generator import generate    # noqa: E402
 
@@ -202,6 +203,11 @@ def main() -> int:
 
     router = build_default_router()
     ready, held, skipped, cached, llm_calls = [], [], 0, 0, 0
+    _recent = []
+    for _h, in session.execute(text(
+            "SELECT headline FROM published_stories "
+            "WHERE published_at > now() - interval '48 hours'")):
+        _recent.append((fingerprint(_h or ''), _h or ''))
 
     for item_id, title, body, url, src_name in rows:
         if len(ready) >= a.max_posts:
@@ -244,6 +250,17 @@ def main() -> int:
         if not draft.ok:
             print("- брак: %s (%s)" % (title[:40], "; ".join(draft.problems)[:50]))
             continue
+
+        _fp = fingerprint(draft.headline)
+        _dup = None
+        for _pfp, _ph in _recent:
+            if similarity(_fp, _pfp) >= 0.30:
+                _dup = _ph
+                break
+        if _dup:
+            print("- тема уже освещалась: %s" % _dup[:44])
+            continue
+        _recent.append((_fp, draft.headline))
 
         _post = {"title": draft.headline, "text": draft.render()}
         _hold = risky(_post, change, body)
