@@ -265,6 +265,14 @@ def main() -> int:
                 print('  + дополнено из сюжета: %s' % ', '.join(change['_filled'][:4]))
         except Exception as _e:
             pass
+        _hj = session.execute(text(
+            "SELECT reason FROM ved_held WHERE raw_item_id = :r "
+            "AND at > now() - interval '48 hours'"), {"r": str(item_id)}).first()
+        if _hj:
+            skipped += 1
+            print("- отложен ранее: %s" % (_hj[0] or "")[:44])
+            continue
+
         draft = generate(router, change, source_url=url, source_text=body)
         llm_calls += 1
         try:
@@ -301,6 +309,11 @@ def main() -> int:
             if not _hold:
                 print("~ вычищен домысел: %s" % draft.headline[:44])
         if _hold:
+            session.execute(text(
+                "INSERT INTO ved_held (raw_item_id, reason) VALUES (:r, :n) "
+                "ON CONFLICT (raw_item_id) DO UPDATE SET reason = :n, at = now()"),
+                {"r": str(item_id), "n": _hold[:200]})
+            session.commit()
             held.append({"title": draft.headline, "reason": _hold})
             print("~ отложен: %s (%s)" % (draft.headline[:44], _hold))
             continue
