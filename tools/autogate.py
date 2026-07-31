@@ -60,8 +60,16 @@ def strip_unsupported(text, change, source=""):
         if not any(w in low and w not in facts for w in RISK):
             keep.append(sent)
     res = " ".join(keep).strip()
-    res = _re.sub(r"[,;]\s*(за|и|или|в|с|на|по|к|от|до|при)\.?$", ".", res)
     res = _re.sub(r"\s+([,.;])", r"\1", res)
+    res = res.rstrip(" .,;")
+    tail = _re.compile(
+        r"[,;]?\s+(за|и|или|в|во|с|со|на|по|к|от|до|при|для|из|о|об|а|но)$",
+        _re.I)
+    for _ in range(3):
+        m = tail.search(res)
+        if not m:
+            break
+        res = res[:m.start()].rstrip(" .,;")
     if res and res[-1] not in ".!?":
         res += "."
     return res

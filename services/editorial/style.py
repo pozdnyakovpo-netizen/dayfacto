@@ -80,7 +80,14 @@ def build_post(d):
     res = "\n".join(out).strip()
     plain = re.sub(r"<[^>]+>", "", res)
     if len(plain) > 980 and lead:
-        short = lead[:260].rsplit(" ", 1)[0].rstrip(" ,.;") + "."
+        import re as _r
+        _sent = _r.split(r"(?<=[.!?])\s+", lead)
+        short, acc = lead, ""
+        for _p in _sent:
+            if len(acc) + len(_p) > 300 and acc:
+                break
+            acc = (acc + " " + _p).strip()
+        short = acc or _sent[0]
         out[out.index(mono(esc(lead)))] = mono(esc(short))
         res = "\n".join(out).strip()
     return res
