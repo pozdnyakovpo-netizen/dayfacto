@@ -64,3 +64,45 @@ def render_context(ctx, current_date=""):
                 w = w[:72].rsplit(" ", 1)[0] + "…"
             out.append("%s — %s%s" % (label, w, mark))
     return out
+
+
+SCALARS = ("scope", "goods", "value_old", "value_new", "doc_number",
+           "impact_note", "date_raw")
+
+
+def merge_subject_facts(session, raw_item_id, change, body):
+    """Дополняет факты из соседних материалов того же сюжета."""
+    from sqlalchemy import text as _t
+    rows = session.execute(_t(
+        "SELECT v.payload, coalesce(r.body,'') "
+        "FROM ved_subject_items i "
+        "JOIN ved_subject_items j ON j.subject_id = i.subject_id "
+        "JOIN ved_extractions v ON v.raw_item_id = j.raw_item_id "
+        "JOIN raw_items r ON r.id = j.raw_item_id "
+        "WHERE i.raw_item_id = :r AND j.raw_item_id <> :r"),
+        {"r": str(raw_item_id)}).all()
+    if not rows:
+        return change, body
+
+    import json as _j
+    out = dict(change)
+    extra = [body or ""]
+    filled = []
+    for payload, sib_body in rows:
+        sib = _j.loads(payload) if isinstance(payload, str) else payload
+        if sib_body:
+            extra.append(sib_body)
+        for k in SCALARS:
+            cur = (out.get(k) or "").strip()
+            new = (sib.get(k) or "").strip()
+            if not cur and new:
+                out[k] = new
+                filled.append(k)
+            elif cur and new and len(new) > len(cur) * 1.4:
+                out[k] = new
+                filled.append(k + "+")
+        if not out.get("tnved_codes") and sib.get("tnved_codes"):
+            out["tnved_codes"] = sib["tnved_codes"]
+    out["_merged_from"] = len(rows)
+    out["_filled"] = filled
+    return out, "\n\n".join(extra)

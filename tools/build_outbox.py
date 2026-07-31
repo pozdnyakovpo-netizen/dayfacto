@@ -179,6 +179,26 @@ def main() -> int:
     )
     rows = [(i.id, i.title, i.body or "", i.url or "", i.source.name) for i in items]
 
+    # среди похожих материалов оставляем самый полный
+    _groups, _collapsed = [], 0
+    for _row in rows:
+        _fp = fingerprint(_row[1])
+        _hit = None
+        for _g in _groups:
+            if similarity(_fp, _g["fp"]) >= 0.30:
+                _hit = _g
+                break
+        if _hit is None:
+            _groups.append({"fp": _fp, "best": _row})
+            continue
+        _hit["fp"] |= _fp
+        _collapsed += 1
+        if len(_row[2]) > len(_hit["best"][2]):
+            _hit["best"] = _row
+    if _collapsed:
+        print("схлопнуто похожих материалов: %d" % _collapsed)
+    rows = [_g["best"] for _g in _groups]
+
     if not rows:
         print("материалов нет")
         session.close()
@@ -238,6 +258,13 @@ def main() -> int:
             print("- %s (%s)" % (title[:46], change.get("reason", "")[:40]))
             continue
 
+        try:
+            from services.memory.context import merge_subject_facts
+            change, body = merge_subject_facts(session, item_id, change, body)
+            if change.get('_filled'):
+                print('  + дополнено из сюжета: %s' % ', '.join(change['_filled'][:4]))
+        except Exception as _e:
+            pass
         draft = generate(router, change, source_url=url, source_text=body)
         llm_calls += 1
         try:
