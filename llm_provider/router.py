@@ -123,6 +123,12 @@ def build_default_router(config_reader: Callable[[str], str | None] | None = Non
             model=os.environ.get("CLAUDE_MODEL", "claude-sonnet-4-5"),
         )
 
+    if os.environ.get("GEMINI_API_KEY"):
+        from .gemini_provider import GeminiProvider
+        providers["gemini"] = GeminiProvider(
+            model=os.environ.get("GEMINI_MODEL", "gemini-2.5-flash"),
+        )
+
     if not providers:
         raise RuntimeError("Не задан ни один ключ провайдера (GIGACHAT_AUTH_KEY / ANTHROPIC_API_KEY)")
 
