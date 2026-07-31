@@ -39,9 +39,15 @@ def build_post(d):
     head = head.rstrip(":.")
     out = ["<b>%s</b>" % esc(head)]
 
+    ctx = getattr(d, "context_lines", None) or []
+    conf = [c for c in ctx if c.startswith("▪")]
+    tail_ctx = [c for c in ctx if not c.startswith("▪")]
+
     eff = ru_date(getattr(d, "effective_date", "") or "")
     if eff:
-        out += ["", "▪ Вступает в силу %s" % eff]
+        out += ["", "▪ Вступает в силу %s" % eff] + conf
+    elif conf:
+        out += [""] + conf
 
     lead = _para(getattr(d, "what_changes", ""))
     if lead:
@@ -55,12 +61,6 @@ def build_post(d):
     if todo:
         out += ["", "<b>Что делать</b>", mono(esc(todo))]
 
-    ctx = getattr(d, "context_lines", None) or []
-    conf = [c for c in ctx if c.startswith("▪")]
-    tail_ctx = [c for c in ctx if not c.startswith("▪")]
-    if conf:
-        pos = 2 if eff else 1
-        out[pos:pos] = conf
     tail_ctx = [x for x in tail_ctx if x.strip()]
     if tail_ctx:
         out += [""] + tail_ctx

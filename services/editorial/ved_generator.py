@@ -176,6 +176,7 @@ def generate(router, change: dict, story_id: int = 0,
              source_text: str = "") -> VedDraft:
     """change - словарь из ranking.scorers.ved_extract.extract()."""
     d = VedDraft(story_id=story_id)
+    d.effective_date = change.get("effective_date") or ""
 
     if not change.get("publishable"):
         d.problems.append("сюжет не прошёл отбор: %s" % change.get("reason", ""))
