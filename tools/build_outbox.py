@@ -263,7 +263,7 @@ def main() -> int:
 
         ready.append({
             "item_id": str(item_id),
-            "title": title[:200],
+            "title": draft.headline[:200],
             "text": draft.render(),
             "change_type": change.get("change_type", ""),
             "doc_number": change.get("doc_number", ""),
