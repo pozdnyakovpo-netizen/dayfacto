@@ -28,6 +28,18 @@ MONTHS = ("января", "февраля", "марта", "апреля", "ма�
           "августа", "сентября", "октября", "ноября", "декабря")
 
 
+def _short_doc(doc, limit=95):
+    """Сжимает серию однотипных решений и режет по границе слова."""
+    import re as _r
+    d = _r.sub(r"\s+", " ", (doc or "").strip())
+    nums = _r.findall(r"№\s*([\d/-]+)", d)
+    if len(nums) > 1:
+        return "%s и ещё %d" % (d.split(",")[0].strip(), len(nums) - 1)
+    if len(d) <= limit:
+        return d
+    return d[:limit].rsplit(" ", 1)[0] + "…"
+
+
 def _ru(iso):
     try:
         y, m, d = iso.split("-")
@@ -83,7 +95,7 @@ def send_photo(token, chat, text, post):
         img = make(head[:160],
                    change_type=post.get("change_type", ""),
                    effective_date=_ru(post.get("effective_date") or ""),
-                   note=(post.get("doc_number") or "")[:110],
+                   note=_short_doc(post.get("doc_number") or ""),
                    urgent=str(post.get("item_id", "")).endswith(("-d1", "-d7")),
                    out="/app/outbox/_cover.png")
     except Exception as exc:

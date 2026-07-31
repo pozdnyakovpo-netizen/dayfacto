@@ -65,15 +65,19 @@ def make(headline, change_type="", effective_date="", note="",
     d.text((pad + 30 * SS, pad + 22 * SS), badge.upper(),
            font=_f("Inter-SemiBold.ttf", 26), fill=accent)
 
-    fh = _f("InterDisplay-SemiBold.ttf", 66)
+    for _size, _step in ((66, 88), (58, 78), (50, 68), (44, 60)):
+        fh = _f("InterDisplay-SemiBold.ttf", _size)
+        lines = _wrap(d, headline, fh, W * SS - pad * 2 - 20 * SS)
+        if len(lines) <= 4:
+            break
     y = pad + 190 * SS
-    for ln in _wrap(d, headline, fh, W * SS - pad * 2 - 20 * SS)[:3]:
+    for ln in lines[:4]:
         d.text((pad, y), ln, font=fh, fill=LIGHT)
-        y += 88 * SS
+        y += _step * SS
 
     if note:
         fn = _f("Inter-Regular.ttf", 30)
-        y += 14 * SS
+        y += 34 * SS
         for ln in _wrap(d, note, fn, W * SS - pad * 2)[:2]:
             d.text((pad, y), ln, font=fn, fill=MUTED)
             y += 44 * SS
