@@ -127,3 +127,40 @@ def effect_index(change: dict) -> float:
     if change.get("date_status") == "exact":
         score += 0.05
     return round(min(1.0, score), 2)
+
+STATUS_BY_STAGE = {
+    "signal": "первичный сигнал",
+    "draft": "проект",
+    "adopted": "подтверждено",
+    "in_force": "вступило в силу",
+    "clarified": "есть разъяснение",
+    "amended": "скорректировано",
+    "revoked": "отменено",
+    "practice": "есть практика",
+}
+
+
+def reliability(trust):
+    if trust >= 0.80:
+        return "высокая"
+    if trust >= 0.60:
+        return "средняя"
+    return "ограниченная"
+
+
+def impact_label(effect):
+    if effect >= 0.75:
+        return "сильное влияние"
+    if effect >= 0.55:
+        return "умеренное влияние"
+    if effect >= 0.35:
+        return "ограниченный эффект"
+    return "эффект пока не подтверждён"
+
+
+def subject_labels(stage, trust, effect):
+    return {
+        "status": STATUS_BY_STAGE.get(stage or "", "первичный сигнал"),
+        "reliability": reliability(float(trust or 0)),
+        "impact": impact_label(float(effect or 0)),
+    }
